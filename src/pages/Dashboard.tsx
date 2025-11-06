@@ -7,6 +7,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { BookOpen, Clock, Award, TrendingUp, Play, BarChart3, Calendar, Target, Zap, Users, Trophy, Brain, Star, Timer, BookMinus } from 'lucide-react';
 import InterviewPlanner from '@/components/InterviewPlanner/InterviewPlanner';
 import Posts from '@/components/Posts/Posts';
+import DiscussionPanel from '@/components/Discussion/DiscussionPanel';
 import type { InterviewPlan } from '@/components/Chatbot/engine';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardData, type DashboardStats } from '@/hooks/useDashboardData';
@@ -18,8 +19,9 @@ import studentActivities from '@/assets/student-activities.jpg';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { modules, stats, loading } = useDashboardData();
-  const { weeklyActivity, learningStreak, logActivity } = useActivityTracking();
+  const { modules, stats, loading, refetchData } = useDashboardData();
+  const { weeklyActivity, learningStreak, logActivity, refetchData: refetchActivity } = useActivityTracking();
+  const [showDiscussion, setShowDiscussion] = useState(false);
   const [aiRecommendations, setAiRecommendations] = useState<string[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
   const [previousStats, setPreviousStats] = useState<DashboardStats>({
@@ -35,9 +37,16 @@ const Dashboard = () => {
     if (savedStats) {
       setPreviousStats(JSON.parse(savedStats));
     }
-    
+
     // Log login activity once
     logActivity('login');
+    // Refresh activity/stats when module progress is updated elsewhere
+    const handler = (_e?: any) => {
+      try { refetchData(); } catch (e) { }
+      try { refetchActivity(); } catch (e) { }
+    };
+    window.addEventListener('moduleProgressUpdated', handler as EventListener);
+    return () => window.removeEventListener('moduleProgressUpdated', handler as EventListener);
   }, []); // Run only once on mount
 
   // Fetch dynamic data when modules change
@@ -73,7 +82,7 @@ const Dashboard = () => {
       const recommendations = [];
       const inProgressModules = modules.filter(m => m.status === 'In Progress');
       const notStartedModules = modules.filter(m => m.status === 'Not Started');
-      
+
       if (inProgressModules.length > 0) {
         recommendations.push(`Continue with "${inProgressModules[0].title}" to maintain momentum`);
       }
@@ -86,13 +95,13 @@ const Dashboard = () => {
       if (stats.hoursLearned < 5) {
         recommendations.push("Try to study at least 30 minutes daily for better retention");
       }
-      
+
       setAiRecommendations(recommendations);
 
       // Generate achievements based on actual progress
       const dynamicAchievements = [];
       const completedCount = modules.filter(m => m.status === 'Completed').length;
-      
+
       if (completedCount > 0) {
         dynamicAchievements.push({
           icon: Trophy,
@@ -102,7 +111,7 @@ const Dashboard = () => {
           color: 'text-warning'
         });
       }
-      
+
       if (stats.hoursLearned >= 5) {
         dynamicAchievements.push({
           icon: Target,
@@ -112,7 +121,7 @@ const Dashboard = () => {
           color: 'text-success'
         });
       }
-      
+
       if (stats.averageScore >= 85) {
         dynamicAchievements.push({
           icon: Brain,
@@ -122,7 +131,7 @@ const Dashboard = () => {
           color: 'text-primary'
         });
       }
-      
+
       setAchievements(dynamicAchievements);
 
     } catch (error) {
@@ -144,56 +153,56 @@ const Dashboard = () => {
   }
 
   const statsData = [
-    { 
-      icon: BookOpen, 
-      label: 'Courses Enrolled', 
-      value: stats.coursesEnrolled.toString(), 
-      color: 'text-primary', 
-      change: previousStats.coursesEnrolled > 0 
-        ? `+${stats.coursesEnrolled - previousStats.coursesEnrolled} new` 
-        : `${stats.coursesEnrolled} total`, 
-      trend: stats.coursesEnrolled >= previousStats.coursesEnrolled ? 'up' : 'neutral' 
+    {
+      icon: BookOpen,
+      label: 'Courses Enrolled',
+      value: stats.coursesEnrolled.toString(),
+      color: 'text-primary',
+      change: previousStats.coursesEnrolled > 0
+        ? `+${stats.coursesEnrolled - previousStats.coursesEnrolled} new`
+        : `${stats.coursesEnrolled} total`,
+      trend: stats.coursesEnrolled >= previousStats.coursesEnrolled ? 'up' : 'neutral'
     },
-    { 
-      icon: Clock, 
-      label: 'Hours Learned', 
-      value: stats.hoursLearned.toString(), 
-      color: 'text-accent', 
-      change: previousStats.hoursLearned > 0 
-        ? `+${(stats.hoursLearned - previousStats.hoursLearned).toFixed(1)}h gained` 
-        : `${stats.hoursLearned}h total`, 
-      trend: stats.hoursLearned >= previousStats.hoursLearned ? 'up' : 'neutral' 
+    {
+      icon: Clock,
+      label: 'Hours Learned',
+      value: stats.hoursLearned.toString(),
+      color: 'text-accent',
+      change: previousStats.hoursLearned > 0
+        ? `+${(stats.hoursLearned - previousStats.hoursLearned).toFixed(1)}h gained`
+        : `${stats.hoursLearned}h total`,
+      trend: stats.hoursLearned >= previousStats.hoursLearned ? 'up' : 'neutral'
     },
-    { 
-      icon: Award, 
-      label: 'Certificates', 
-      value: stats.certificates.toString(), 
-      color: 'text-success', 
-      change: stats.certificates > previousStats.certificates 
-        ? `+${stats.certificates - previousStats.certificates} new!` 
-        : stats.certificates > 0 ? 'Keep learning!' : 'Start learning!', 
-      trend: stats.certificates > previousStats.certificates ? 'up' : 'neutral' 
+    {
+      icon: Award,
+      label: 'Certificates',
+      value: stats.certificates.toString(),
+      color: 'text-success',
+      change: stats.certificates > previousStats.certificates
+        ? `+${stats.certificates - previousStats.certificates} new!`
+        : stats.certificates > 0 ? 'Keep learning!' : 'Start learning!',
+      trend: stats.certificates > previousStats.certificates ? 'up' : 'neutral'
     },
-    { 
-      icon: TrendingUp, 
-      label: 'Average Score', 
-      value: `${stats.averageScore}%`, 
-      color: 'text-warning', 
-      change: previousStats.averageScore > 0 
-        ? `${stats.averageScore >= previousStats.averageScore ? '+' : ''}${(stats.averageScore - previousStats.averageScore).toFixed(0)}% change` 
-        : stats.averageScore > 0 ? `${stats.averageScore}% average` : 'No scores yet', 
-      trend: stats.averageScore >= previousStats.averageScore ? 'up' : 'neutral' 
+    {
+      icon: TrendingUp,
+      label: 'Average Score',
+      value: `${stats.averageScore}%`,
+      color: 'text-warning',
+      change: previousStats.averageScore > 0
+        ? `${stats.averageScore >= previousStats.averageScore ? '+' : ''}${(stats.averageScore - previousStats.averageScore).toFixed(0)}% change`
+        : stats.averageScore > 0 ? `${stats.averageScore}% average` : 'No scores yet',
+      trend: stats.averageScore >= previousStats.averageScore ? 'up' : 'neutral'
     },
   ];
 
   return (
     <div className="min-h-screen relative">
       {/* Background */}
-      <div 
+      <div
         className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-5 pointer-events-none"
         style={{ backgroundImage: `url(${learningBg})` }}
       />
-      
+
       <Layout>
         <div className="container mx-auto px-4 py-8 relative z-10">
           {/* Header */}
@@ -214,12 +223,11 @@ const Dashboard = () => {
                 <Card key={index} className="shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden group">
                   <CardContent className="p-4 lg:p-6 relative">
                     <div className="flex items-center justify-between mb-4">
-                      <div className={`p-2 lg:p-3 rounded-xl bg-gradient-to-br ${
-                        index === 0 ? 'from-primary/20 to-primary/10' :
+                      <div className={`p-2 lg:p-3 rounded-xl bg-gradient-to-br ${index === 0 ? 'from-primary/20 to-primary/10' :
                         index === 1 ? 'from-accent/20 to-accent/10' :
-                        index === 2 ? 'from-success/20 to-success/10' :
-                        'from-warning/20 to-warning/10'
-                      } ${stat.color} group-hover:scale-110 transition-transform`}>
+                          index === 2 ? 'from-success/20 to-success/10' :
+                            'from-warning/20 to-warning/10'
+                        } ${stat.color} group-hover:scale-110 transition-transform`}>
                         <Icon className="w-5 h-5 lg:w-6 lg:h-6" />
                       </div>
                       <TrendingUp className={`w-4 h-4 ${stat.trend === 'up' ? 'text-success' : 'text-muted-foreground'}`} />
@@ -263,22 +271,21 @@ const Dashboard = () => {
                             <p className="text-sm text-muted-foreground mb-3">{module.description}</p>
                           )}
                         </div>
-                        <span className={`px-3 py-1 text-xs rounded-full self-start lg:self-center ${
-                          module.status === 'Completed' ? 'bg-success text-success-foreground' :
+                        <span className={`px-3 py-1 text-xs rounded-full self-start lg:self-center ${module.status === 'Completed' ? 'bg-success text-success-foreground' :
                           module.status === 'In Progress' ? 'bg-primary text-primary-foreground' :
-                          'bg-muted text-muted-foreground'
-                        }`}>
+                            'bg-muted text-muted-foreground'
+                          }`}>
                           {module.status}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center gap-4 mb-4">
                         <div className="flex-1">
                           <Progress value={module.progress} className="h-2 lg:h-3" />
                         </div>
                         <span className="text-sm font-medium text-muted-foreground">{module.progress}%</span>
                       </div>
-                      
+
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
@@ -294,12 +301,12 @@ const Dashboard = () => {
                             {module.testCount} Tests
                           </span>
                         </div>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant={module.status === 'Not Started' ? 'default' : 'outline'}
                           className={module.status === 'Not Started' ? 'bg-hero-gradient' : ''}
-                          onClick={() => navigate(`/dashboard/adaptive/theory`, { 
-                            state: { moduleSlug: module.slug } 
+                          onClick={() => navigate(`/dashboard/adaptive/theory`, {
+                            state: { moduleSlug: module.slug }
                           })}
                         >
                           <Play className="w-3 h-3 mr-1" />
@@ -322,14 +329,14 @@ const Dashboard = () => {
                                   size="sm"
                                   variant="outline"
                                   className="w-full"
-                                  onClick={() => navigate(`/dashboard/adaptive/theory`, { 
-                                    state: { moduleSlug: module.slug } 
+                                  onClick={() => navigate(`/dashboard/adaptive/theory`, {
+                                    state: { moduleSlug: module.slug }
                                   })}
                                 >
                                   {module.theoryCompleted ? 'Review' : 'Start'}
                                 </Button>
                               </div>
-                              
+
                               <div className="text-center p-3 rounded-lg border bg-muted/20">
                                 <Brain className="w-5 h-5 mx-auto mb-2 text-accent" />
                                 <p className="text-xs font-medium mb-1">Quizzes</p>
@@ -339,14 +346,14 @@ const Dashboard = () => {
                                 <Button
                                   size="sm"
                                   className="bg-hero-gradient w-full"
-                                  onClick={() => navigate(`/dashboard/adaptive/quizzes`, { 
-                                    state: { moduleSlug: module.slug } 
+                                  onClick={() => navigate(`/dashboard/adaptive/quizzes`, {
+                                    state: { moduleSlug: module.slug }
                                   })}
                                 >
                                   Practice
                                 </Button>
                               </div>
-                              
+
                               <div className="text-center p-3 rounded-lg border bg-muted/20">
                                 <Target className="w-5 h-5 mx-auto mb-2 text-warning" />
                                 <p className="text-xs font-medium mb-1">Tests</p>
@@ -357,8 +364,8 @@ const Dashboard = () => {
                                   size="sm"
                                   variant="outline"
                                   className="w-full"
-                                  onClick={() => navigate(`/dashboard/adaptive/tests`, { 
-                                    state: { moduleSlug: module.slug } 
+                                  onClick={() => navigate(`/dashboard/adaptive/tests`, {
+                                    state: { moduleSlug: module.slug }
                                   })}
                                 >
                                   Take Test
@@ -375,7 +382,7 @@ const Dashboard = () => {
 
               {/* Study Resources */}
               <Card className="mt-8 shadow-card overflow-hidden">
-                <div 
+                <div
                   className="h-32 lg:h-40 bg-cover bg-center relative"
                   style={{ backgroundImage: `url(${booksStudy})` }}
                 >
@@ -396,10 +403,10 @@ const Dashboard = () => {
 
             {/* Enhanced Analytics Sidebar */}
             <div className="space-y-6">
-              <InterviewPlanner onPlan={(plan) => 
+              <InterviewPlanner onPlan={(plan) =>
                 navigate('/dashboard/interview-plan', { state: { plan } })
               } />
-              
+
               {/* AI Recommendations */}
               <Card className="shadow-card bg-gradient-to-br from-primary/5 to-accent/5">
                 <CardHeader>
@@ -508,7 +515,7 @@ const Dashboard = () => {
 
               {/* Student Activities */}
               <Card className="shadow-card overflow-hidden">
-                <div 
+                <div
                   className="h-24 lg:h-32 bg-cover bg-center relative"
                   style={{ backgroundImage: `url(${studentActivities})` }}
                 >
@@ -522,11 +529,15 @@ const Dashboard = () => {
                 </div>
                 <CardContent className="p-3 lg:p-4">
                   <p className="text-sm text-muted-foreground mb-3">Connect with fellow learners</p>
-                  <Button size="sm" variant="outline" className="w-full">
+                  <Button size="sm" variant="outline" className="w-full transform active:translate-y-1 active:scale-95" onClick={() => setShowDiscussion(true)}>
                     Join Discussion
                   </Button>
                 </CardContent>
               </Card>
+
+              {showDiscussion && (
+                <DiscussionPanel onClose={() => setShowDiscussion(false)} />
+              )}
 
               {/* Recent Achievements */}
               {achievements.length > 0 && (

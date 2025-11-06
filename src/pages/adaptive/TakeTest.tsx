@@ -31,35 +31,44 @@ const TakeTest: React.FC = () => {
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [test, setTest] = useState<any>(null);
-  
-  const { incrementTests } = useModuleProgress(test?.module_id || "");
 
+  const { incrementTests } = useModuleProgress(test?.module_id || "");
   useEffect(() => {
     const fetchTest = async () => {
       if (!testId) return;
-      
+
       const { data: testData } = await supabase
         .from("tests")
         .select("*, modules(title, slug)")
         .eq("id", testId)
         .single();
-      
+
       const { data: questionsData } = await supabase
         .from("test_questions")
         .select("*")
         .eq("test_id", testId)
         .order("order_index");
-      
+
       if (testData) setTest(testData);
       if (questionsData) {
         setQuestions(questionsData);
         setAnswers(new Array(questionsData.length).fill(-1));
+        setSelectedAnswer(null);
       }
       setLoading(false);
     };
-    
+
     fetchTest();
   }, [testId]);
+
+  // Reset handler must be defined before it's referenced in the render tree
+  function resetTest() {
+    setAnswers(new Array(questions.length).fill(-1));
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setScore(0);
+  }
 
   const handleAnswerSelect = (answerIndex: number) => {
     setSelectedAnswer(answerIndex);
@@ -67,11 +76,11 @@ const TakeTest: React.FC = () => {
 
   const handleNext = () => {
     if (selectedAnswer === null) return;
-    
+
     const newAnswers = [...answers];
     newAnswers[currentIndex] = selectedAnswer;
     setAnswers(newAnswers);
-    
+
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setSelectedAnswer(newAnswers[currentIndex + 1] === -1 ? null : newAnswers[currentIndex + 1]);
@@ -84,10 +93,10 @@ const TakeTest: React.FC = () => {
     const correctCount = finalAnswers.reduce((count, answer, index) => {
       return answer === questions[index].correct_index ? count + 1 : count;
     }, 0);
-    
+
     const percentage = Math.round((correctCount / questions.length) * 100);
     setScore(percentage);
-    
+
     // Save attempt to database
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -98,10 +107,10 @@ const TakeTest: React.FC = () => {
         score: percentage,
         completed_at: new Date().toISOString(),
       });
-      
+
       await incrementTests();
     }
-    
+
     setShowResult(true);
     toast({
       title: "Test Completed!",
@@ -121,8 +130,8 @@ const TakeTest: React.FC = () => {
 
   if (showResult) {
     return (
-      <FullscreenWrapper 
-        isEnabled={false} 
+      <FullscreenWrapper
+        isEnabled={false}
         title="Test Complete"
       >
         <Layout>
@@ -135,13 +144,13 @@ const TakeTest: React.FC = () => {
                 <div className="text-6xl font-bold text-primary">{score}%</div>
                 <p className="text-lg">You got {questions.filter((_, i) => answers[i] === questions[i].correct_index).length} out of {questions.length} questions correct.</p>
                 <div className="flex gap-4 justify-center flex-wrap">
-                  <Button 
+                  <Button
                     onClick={() => navigate(`/dashboard/adaptive/tests?slug=${test?.modules?.slug}`)}
                     className="bg-hero-gradient"
                   >
                     Back to Tests
                   </Button>
-                  <Button variant="outline" onClick={() => window.location.reload()}>
+                  <Button variant="outline" onClick={resetTest}>
                     Retake Test
                   </Button>
                 </div>
@@ -153,12 +162,14 @@ const TakeTest: React.FC = () => {
     );
   }
 
+
+
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   return (
-    <FullscreenWrapper 
-      isEnabled={!showResult && !loading} 
+    <FullscreenWrapper
+      isEnabled={!showResult && !loading}
       onExit={() => navigate(`/dashboard/adaptive/tests?slug=${test?.modules?.slug}`)}
       title={`Test: ${test?.title || 'Loading...'}`}
       autoEnter={true}
@@ -182,7 +193,7 @@ const TakeTest: React.FC = () => {
                 <CardTitle className="text-xl">{currentQuestion?.question}</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <RadioGroup value={selectedAnswer?.toString()} onValueChange={(value) => handleAnswerSelect(parseInt(value))}>
+                <RadioGroup value={selectedAnswer !== null ? selectedAnswer.toString() : ""} onValueChange={(value) => handleAnswerSelect(parseInt(value))}>
                   {currentQuestion?.options.map((option, index) => (
                     <div key={index} className="flex items-center space-x-2 p-4 rounded-lg border hover:bg-muted/50 hover:border-primary/50 transition-all duration-200">
                       <RadioGroupItem value={index.toString()} id={`option-${index}`} />
@@ -192,17 +203,17 @@ const TakeTest: React.FC = () => {
                     </div>
                   ))}
                 </RadioGroup>
-                
+
                 <div className="flex justify-between mt-6">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
                     disabled={currentIndex === 0}
                     size="lg"
                   >
                     Previous
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleNext}
                     disabled={selectedAnswer === null}
                     className="bg-hero-gradient"

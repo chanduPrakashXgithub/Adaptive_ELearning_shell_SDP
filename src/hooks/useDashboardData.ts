@@ -35,6 +35,13 @@ export function useDashboardData() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Listen for module progress updates to refresh dashboard stats dynamically
+    const handler = () => {
+      fetchDashboardData();
+    };
+    window.addEventListener('moduleProgressUpdated', handler as EventListener);
+    return () => window.removeEventListener('moduleProgressUpdated', handler as EventListener);
   }, []);
 
   const fetchDashboardData = async () => {
@@ -95,10 +102,10 @@ export function useDashboardData() {
           time_spent_seconds: 0,
           percent_complete: 0
         };
-        
+
         const quizCount = quizCounts?.filter(q => q.module_id === module.id).length || 0;
         const testCount = testCounts?.filter(t => t.module_id === module.id).length || 0;
-        
+
         const hours = Math.floor(progress.time_spent_seconds / 3600);
         const minutes = Math.floor((progress.time_spent_seconds % 3600) / 60);
         const timeSpent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;

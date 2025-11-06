@@ -31,33 +31,34 @@ const TakeQuiz: React.FC = () => {
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<any>(null);
-  
+
   const { incrementQuizzes } = useModuleProgress(quiz?.module_id || "");
 
   useEffect(() => {
     const fetchQuiz = async () => {
       if (!quizId) return;
-      
+
       const { data: quizData } = await supabase
         .from("quizzes")
         .select("*, modules(title, slug)")
         .eq("id", quizId)
         .single();
-      
+
       const { data: questionsData } = await supabase
         .from("quiz_questions")
         .select("*")
         .eq("quiz_id", quizId)
         .order("order_index");
-      
+
       if (quizData) setQuiz(quizData);
       if (questionsData) {
         setQuestions(questionsData);
         setAnswers(new Array(questionsData.length).fill(-1));
+        setSelectedAnswer(null);
       }
       setLoading(false);
     };
-    
+
     fetchQuiz();
   }, [quizId]);
 
@@ -67,11 +68,11 @@ const TakeQuiz: React.FC = () => {
 
   const handleNext = () => {
     if (selectedAnswer === null) return;
-    
+
     const newAnswers = [...answers];
     newAnswers[currentIndex] = selectedAnswer;
     setAnswers(newAnswers);
-    
+
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setSelectedAnswer(newAnswers[currentIndex + 1] === -1 ? null : newAnswers[currentIndex + 1]);
@@ -84,10 +85,10 @@ const TakeQuiz: React.FC = () => {
     const correctCount = finalAnswers.reduce((count, answer, index) => {
       return answer === questions[index].correct_index ? count + 1 : count;
     }, 0);
-    
+
     const percentage = Math.round((correctCount / questions.length) * 100);
     setScore(percentage);
-    
+
     // Save attempt to database
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -98,16 +99,25 @@ const TakeQuiz: React.FC = () => {
         score: percentage,
         completed_at: new Date().toISOString(),
       });
-      
+
       await incrementQuizzes();
     }
-    
+
     setShowResult(true);
     toast({
       title: "Quiz Completed!",
       description: `You scored ${percentage}%`,
     });
   };
+
+  // Reset handler must be defined before it's referenced in the render tree
+  function resetQuiz() {
+    setAnswers(new Array(questions.length).fill(-1));
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setScore(0);
+  }
 
   if (loading) {
     return (
@@ -121,8 +131,8 @@ const TakeQuiz: React.FC = () => {
 
   if (showResult) {
     return (
-      <FullscreenWrapper 
-        isEnabled={false} 
+      <FullscreenWrapper
+        isEnabled={false}
         title="Quiz Complete"
       >
         <Layout>
@@ -135,13 +145,13 @@ const TakeQuiz: React.FC = () => {
                 <div className="text-6xl font-bold text-primary">{score}%</div>
                 <p className="text-lg">You got {questions.filter((_, i) => answers[i] === questions[i].correct_index).length} out of {questions.length} questions correct.</p>
                 <div className="flex gap-4 justify-center flex-wrap">
-                  <Button 
+                  <Button
                     onClick={() => navigate(`/dashboard/adaptive/quizzes?slug=${quiz?.modules?.slug}`)}
                     className="bg-hero-gradient"
                   >
                     Back to Quizzes
                   </Button>
-                  <Button variant="outline" onClick={() => window.location.reload()}>
+                  <Button variant="outline" onClick={resetQuiz}>
                     Retake Quiz
                   </Button>
                 </div>
@@ -157,8 +167,8 @@ const TakeQuiz: React.FC = () => {
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   return (
-    <FullscreenWrapper 
-      isEnabled={!showResult && !loading} 
+    <FullscreenWrapper
+      isEnabled={!showResult && !loading}
       onExit={() => navigate(`/dashboard/adaptive/quizzes?slug=${quiz?.modules?.slug}`)}
       title={`Quiz: ${quiz?.title || 'Loading...'}`}
       autoEnter={true}
@@ -182,7 +192,7 @@ const TakeQuiz: React.FC = () => {
                 <CardTitle className="text-xl">{currentQuestion?.question}</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <RadioGroup value={selectedAnswer?.toString()} onValueChange={(value) => handleAnswerSelect(parseInt(value))}>
+                <RadioGroup value={selectedAnswer !== null ? selectedAnswer.toString() : ""} onValueChange={(value) => handleAnswerSelect(parseInt(value))}>
                   {currentQuestion?.options.map((option, index) => (
                     <div key={index} className="flex items-center space-x-2 p-4 rounded-lg border hover:bg-muted/50 hover:border-primary/50 transition-all duration-200">
                       <RadioGroupItem value={index.toString()} id={`option-${index}`} />
@@ -192,17 +202,17 @@ const TakeQuiz: React.FC = () => {
                     </div>
                   ))}
                 </RadioGroup>
-                
+
                 <div className="flex justify-between mt-6">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
                     disabled={currentIndex === 0}
                     size="lg"
                   >
                     Previous
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleNext}
                     disabled={selectedAnswer === null}
                     className="bg-hero-gradient"

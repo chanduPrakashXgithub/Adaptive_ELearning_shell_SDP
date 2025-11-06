@@ -6,13 +6,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Calendar, 
-  Target, 
-  CheckCircle2, 
-  Clock, 
-  Code, 
-  Users, 
+import {
+  Calendar,
+  Target,
+  CheckCircle2,
+  Clock,
+  Code,
+  Users,
   TrendingUp,
   BookOpen,
   Play,
@@ -66,7 +66,7 @@ const InterviewPlanDisplay: React.FC<InterviewPlanDisplayProps> = ({ plan, onRes
     if (totalItems === 0) return 0;
 
     let completedItems = 0;
-    
+
     // Count completed tasks
     week.tasks.forEach((_, index) => {
       const taskId = getTaskId(weekNumber, index);
@@ -139,9 +139,9 @@ const InterviewPlanDisplay: React.FC<InterviewPlanDisplayProps> = ({ plan, onRes
               <div className="text-sm text-muted-foreground">Progress</div>
             </div>
           </div>
-          
+
           <Progress value={overallProgress} className="h-3" />
-          
+
           {plan.companyProfile && (
             <div className="grid md:grid-cols-2 gap-4 mt-4">
               <div>
@@ -157,7 +157,7 @@ const InterviewPlanDisplay: React.FC<InterviewPlanDisplayProps> = ({ plan, onRes
                   ))}
                 </div>
               </div>
-              
+
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Users className="w-4 h-4 text-primary" />
@@ -211,9 +211,9 @@ const InterviewPlanDisplay: React.FC<InterviewPlanDisplayProps> = ({ plan, onRes
                       {calculateWeekProgress(week.week)}% Complete
                     </Badge>
                   </div>
-                  
+
                   <Progress value={calculateWeekProgress(week.week)} className="h-2" />
-                  
+
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <h4 className="font-medium flex items-center gap-2 mb-2">
@@ -228,7 +228,7 @@ const InterviewPlanDisplay: React.FC<InterviewPlanDisplayProps> = ({ plan, onRes
                         ))}
                       </div>
                     </div>
-                    
+
                     <div>
                       <h4 className="font-medium flex items-center gap-2 mb-2">
                         <Award className="w-4 h-4" />
@@ -252,20 +252,19 @@ const InterviewPlanDisplay: React.FC<InterviewPlanDisplayProps> = ({ plan, onRes
                     <CheckCircle2 className="w-4 h-4" />
                     Daily Activities
                   </h4>
-                  
+
                   <div className="space-y-3">
                     {week.tasks.map((task, index) => {
                       const taskId = getTaskId(week.week, index);
                       const isCompleted = taskProgress[taskId] || false;
-                      
+
                       return (
                         <div
                           key={index}
-                          className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-                            isCompleted 
-                              ? 'bg-primary/5 border-primary/20 text-muted-foreground' 
+                          className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${isCompleted
+                              ? 'bg-primary/5 border-primary/20 text-muted-foreground'
                               : 'bg-background border-border hover:bg-muted/30'
-                          }`}
+                            }`}
                         >
                           <Checkbox
                             id={taskId}
@@ -275,9 +274,8 @@ const InterviewPlanDisplay: React.FC<InterviewPlanDisplayProps> = ({ plan, onRes
                           />
                           <label
                             htmlFor={taskId}
-                            className={`flex-1 text-sm cursor-pointer ${
-                              isCompleted ? 'line-through' : ''
-                            }`}
+                            className={`flex-1 text-sm cursor-pointer ${isCompleted ? 'line-through' : ''
+                              }`}
                           >
                             {task}
                           </label>
@@ -298,27 +296,38 @@ const InterviewPlanDisplay: React.FC<InterviewPlanDisplayProps> = ({ plan, onRes
                     <Code className="w-4 h-4" />
                     Problem Solving Progress
                   </h4>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {Array.from({ length: week.problems }, (_, index) => {
+                    {(((week as any).problemList as any[]) || Array.from({ length: week.problems }, (_, i) => null)).map((p, index) => {
                       const problemId = getTaskId(week.week, index, 'problem');
                       const isCompleted = taskProgress[problemId] || false;
-                      
+                      const title = p?.title || `Problem ${index + 1}`;
+                      const url = p?.url;
+                      const platform = p?.platform;
+
                       return (
                         <div
                           key={index}
-                          className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${
-                            isCompleted 
-                              ? 'bg-primary/10 border-primary/20' 
+                          className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${isCompleted
+                              ? 'bg-primary/10 border-primary/20'
                               : 'bg-background border-border hover:bg-muted/30'
-                          }`}
+                            }`}
                           onClick={() => toggleTask(problemId)}
                         >
                           <Checkbox
                             checked={isCompleted}
                             onCheckedChange={() => toggleTask(problemId)}
                           />
-                          <span className="text-sm">Problem {index + 1}</span>
+                          <div className="flex-1 text-sm">
+                            {url ? (
+                              <a href={url} target="_blank" rel="noreferrer" className="underline hover:text-primary">
+                                {title}
+                              </a>
+                            ) : (
+                              <span>{title}</span>
+                            )}
+                            {platform && <span className="text-xs text-muted-foreground ml-2">· {platform}</span>}
+                          </div>
                           {isCompleted && (
                             <CheckCircle2 className="w-3 h-3 text-primary ml-auto" />
                           )}

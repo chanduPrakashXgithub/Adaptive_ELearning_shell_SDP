@@ -112,11 +112,11 @@ const Index = () => {
                   comprehensive study materials, and personalized learning paths designed for modern students.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button size="lg" className="bg-white hover:bg-white/90 text-primary hover:scale-105 transition-all duration-300 shadow-lg font-semibold">
+                  <Button size="lg" className="bg-white hover:bg-white/90 text-foreground hover:scale-105 transition-all duration-300 shadow-lg font-semibold transform active:translate-y-1 active:scale-95">
                     Start Learning Free
                     <ChevronRight className="w-4 h-4 ml-2" />
                   </Button>
-                  <Button size="lg" variant="outline" className="border-white bg-white/20 text-white hover:bg-white/30 hover:border-white hover-scale backdrop-blur-sm font-semibold">
+                  <Button size="lg" variant="outline" className="border-white bg-white/20 text-white hover:bg-white/30 hover:border-white backdrop-blur-sm font-semibold transform active:translate-y-1 active:scale-95">
                     Explore Platform
                   </Button>
                 </div>
@@ -311,11 +311,11 @@ const Index = () => {
                 Join a community of passionate learners and unlock your potential with cutting-edge educational technology.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
-                <Button size="lg" className="bg-white text-primary hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-depth-2 text-lg px-8">
+                <Button size="lg" className="bg-white text-foreground hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-depth-2 text-lg px-8 transform active:translate-y-1 active:scale-95">
                   Start Learning Free
                   <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
-                <Button size="lg" variant="outline" className="border-white bg-white/20 text-white hover:bg-white/30 hover:scale-105 transition-all duration-300 text-lg px-8">
+                <Button size="lg" variant="outline" className="border-white bg-white/20 text-white hover:bg-white/30 hover:scale-105 transition-all duration-300 text-lg px-8 transform active:translate-y-1 active:scale-95">
                   Explore Platform
                 </Button>
               </div>

@@ -133,6 +133,49 @@ const COMPANY_PROFILES: Record<string, CompanyProfile> = {
 
 const MAJOR_COMPANIES = ["Google", "Microsoft", "Amazon", "Meta", "Apple"];
 
+// Small curated problem bank (sample). Each entry includes title, platform and url.
+const PROBLEM_BANK: { title: string; platform: string; url: string; tags: string[] }[] = [
+  { title: 'Two Sum', platform: 'LeetCode', url: 'https://leetcode.com/problems/two-sum/', tags: ['Array', 'Hashmap'] },
+  { title: 'Longest Substring Without Repeating Characters', platform: 'LeetCode', url: 'https://leetcode.com/problems/longest-substring-without-repeating-characters/', tags: ['String', 'Sliding Window'] },
+  { title: 'Merge Intervals', platform: 'LeetCode', url: 'https://leetcode.com/problems/merge-intervals/', tags: ['Intervals', 'Sorting'] },
+  { title: 'Binary Tree Inorder Traversal', platform: 'LeetCode', url: 'https://leetcode.com/problems/binary-tree-inorder-traversal/', tags: ['Tree', 'DFS'] },
+  { title: 'N-Queens', platform: 'LeetCode', url: 'https://leetcode.com/problems/n-queens/', tags: ['Backtracking'] },
+  { title: 'Course Schedule', platform: 'LeetCode', url: 'https://leetcode.com/problems/course-schedule/', tags: ['Graph', 'BFS'] },
+  { title: 'Word Ladder', platform: 'LeetCode', url: 'https://leetcode.com/problems/word-ladder/', tags: ['BFS', 'Graph'] },
+  { title: 'Edit Distance', platform: 'LeetCode', url: 'https://leetcode.com/problems/edit-distance/', tags: ['DP', 'String'] },
+  { title: 'LRU Cache', platform: 'LeetCode', url: 'https://leetcode.com/problems/lru-cache/', tags: ['Design', 'Hashmap'] },
+  { title: 'Median of Two Sorted Arrays', platform: 'LeetCode', url: 'https://leetcode.com/problems/median-of-two-sorted-arrays/', tags: ['Binary Search', 'Array'] },
+  { title: 'Clone Graph', platform: 'LeetCode', url: 'https://leetcode.com/problems/clone-graph/', tags: ['Graph'] },
+  { title: 'Word Search', platform: 'LeetCode', url: 'https://leetcode.com/problems/word-search/', tags: ['Matrix', 'DFS'] },
+  { title: 'Single Number III', platform: 'LeetCode', url: 'https://leetcode.com/problems/single-number-iii/', tags: ['Bit Manipulation'] },
+  { title: 'Maximum Subarray', platform: 'LeetCode', url: 'https://leetcode.com/problems/maximum-subarray/', tags: ['Array', 'DP'] },
+  { title: 'Rotate Image', platform: 'LeetCode', url: 'https://leetcode.com/problems/rotate-image/', tags: ['Matrix'] },
+];
+
+const pickProblemsForConcepts = (concepts: string[], count: number) => {
+  const matches: { title: string; platform: string; url: string }[] = [];
+  const lowered = concepts.map(c => c.toLowerCase());
+
+  // Prefer problems whose tags match the concepts
+  for (const p of PROBLEM_BANK) {
+    const pTags = p.tags.map(t => t.toLowerCase());
+    if (pTags.some(t => lowered.some(c => t.includes(c) || c.includes(t)))) {
+      matches.push({ title: p.title, platform: p.platform, url: p.url });
+    }
+    if (matches.length >= count) break;
+  }
+
+  // If not enough matches, fill from bank
+  let i = 0;
+  while (matches.length < count && i < PROBLEM_BANK.length) {
+    const p = PROBLEM_BANK[i];
+    if (!matches.find(m => m.title === p.title)) matches.push({ title: p.title, platform: p.platform, url: p.url });
+    i++;
+  }
+
+  return matches.slice(0, count);
+}
+
 const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
   const [primaryCompany, setPrimaryCompany] = useState('');
   const [role, setRole] = useState('Software Engineer');
@@ -150,31 +193,33 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
   const generateCompanySpecificPlan = (): InterviewPlan => {
     const weeks = totalWeeks;
     const companyProfile = selectedCompanyProfile;
-    
+
     let plan: WeeklyPlan[] = [];
-    
+
     if (companyProfile && weeks <= 3) {
       // Use company-specific plan for 1-3 weeks
       const weekKeys = [`Week 1`, `Week 2`, `Week 3`].slice(0, weeks);
       plan = weekKeys.map((weekKey, index) => {
         const weekData = companyProfile.plan[weekKey];
         const weekNumber = index + 1;
-        
+
         return {
           week: weekNumber,
           title: weekNumber === 1 ? "Foundations & Easy-Medium Practice" :
-                 weekNumber === 2 ? "Intermediate + Company Pattern" :
-                 "Advanced + Mock Prep",
+            weekNumber === 2 ? "Intermediate + Company Pattern" :
+              "Advanced + Mock Prep",
           concepts: weekData.concepts,
           problems: weekData.problems,
           notes: weekData.notes,
           tasks: generateDailyTasks(weekNumber, companyProfile, weekData.problems)
         };
       });
+      // attach problem lists
+      plan = plan.map(w => ({ ...(w as any), problemList: pickProblemsForConcepts((w as any).concepts || [], (w as any).problems || 0) } as any));
     } else {
       // Generate generic plan for longer periods or unknown companies
       const phaseDistribution = distributeWeeksIntoPhases(weeks);
-      plan = generateGenericPlan(phaseDistribution, companyProfile);
+      plan = _generateGenericPlan(phaseDistribution, companyProfile) as any;
     }
 
     // Generate daily schedule
@@ -190,6 +235,12 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
       plan,
       dailySchedule
     };
+  };
+
+  // Attach problems to a generic week prior to returning plan
+  // (used by generateGenericPlan)
+  const attachProblemsToPlan = (plan: WeeklyPlan[]) => {
+    return plan.map(w => ({ ...(w as any), problemList: pickProblemsForConcepts((w as any).concepts || [], (w as any).problems || 0) } as any));
   };
 
   const generateDailyTasks = (weekNumber: number, profile: CompanyProfile, problemCount: number): string[] => {
@@ -215,21 +266,21 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
         'Final prep: Review all favorite problems'
       ]
     };
-    
+
     return tasksPerWeek[weekNumber as keyof typeof tasksPerWeek] || tasksPerWeek[1];
   };
 
   const distributeWeeksIntoPhases = (totalWeeks: number) => {
     if (totalWeeks <= 3) return { foundations: 1, intermediate: 1, advanced: 1 };
-    if (totalWeeks <= 6) return { 
-      foundations: Math.ceil(totalWeeks * 0.4), 
-      intermediate: Math.ceil(totalWeeks * 0.4), 
-      advanced: Math.floor(totalWeeks * 0.2) 
+    if (totalWeeks <= 6) return {
+      foundations: Math.ceil(totalWeeks * 0.4),
+      intermediate: Math.ceil(totalWeeks * 0.4),
+      advanced: Math.floor(totalWeeks * 0.2)
     };
-    return { 
-      foundations: Math.ceil(totalWeeks * 0.3), 
-      intermediate: Math.ceil(totalWeeks * 0.4), 
-      advanced: Math.floor(totalWeeks * 0.3) 
+    return {
+      foundations: Math.ceil(totalWeeks * 0.3),
+      intermediate: Math.ceil(totalWeeks * 0.4),
+      advanced: Math.floor(totalWeeks * 0.3)
     };
   };
 
@@ -291,14 +342,20 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
     return plan;
   };
 
+  // Ensure generic plan weeks also have attached problems
+  const _generateGenericPlan = (phases: any, profile?: CompanyProfile) => {
+    const p = generateGenericPlan(phases, profile);
+    return attachProblemsToPlan(p);
+  };
+
   const generateDailySchedule = (weeklyPlan: WeeklyPlan[], totalDays: number) => {
     const schedule = [];
     let currentDay = 1;
-    
+
     for (const week of weeklyPlan) {
       const daysInThisWeek = Math.min(7, totalDays - currentDay + 1);
       const problemsPerDay = Math.ceil(week.problems / daysInThisWeek);
-      
+
       for (let dayInWeek = 0; dayInWeek < daysInThisWeek && currentDay <= totalDays; dayInWeek++) {
         schedule.push({
           day: currentDay++,
@@ -307,7 +364,7 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
         });
       }
     }
-    
+
     return schedule;
   };
 
@@ -324,7 +381,7 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
     <Card className="shadow-card bg-gradient-to-br from-primary/5 to-accent/5 border-primary/10">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Target className="w-5 h-5 text-primary" /> 
+          <Target className="w-5 h-5 text-primary" />
           Personalized Interview Prep Planner
         </CardTitle>
       </CardHeader>
@@ -348,7 +405,7 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
               ))}
             </SelectContent>
           </Select>
-          
+
           {selectedCompanyProfile && (
             <div className="mt-2 p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
@@ -362,7 +419,7 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
                   </Badge>
                 ))}
               </div>
-              
+
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-primary" />
                 <span className="font-medium text-sm">Behavioral Focus:</span>
@@ -380,11 +437,11 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
 
         <div>
           <Label htmlFor="role">Target Role</Label>
-          <Input 
-            id="role" 
-            value={role} 
-            onChange={(e) => setRole(e.target.value)} 
-            placeholder="e.g., Software Engineer, Senior SDE" 
+          <Input
+            id="role"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="e.g., Software Engineer, Senior SDE"
           />
         </div>
 
@@ -392,13 +449,13 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
           <div className="col-span-2">
             <Label htmlFor="time">Time Until Interview</Label>
             <div className="flex gap-2">
-              <Input 
-                id="time" 
-                type="number" 
-                min={1} 
-                max={timeUnit === 'weeks' ? 12 : 84} 
-                value={timeValue} 
-                onChange={(e) => setTimeValue(Number(e.target.value) || 1)} 
+              <Input
+                id="time"
+                type="number"
+                min={1}
+                max={timeUnit === 'weeks' ? 12 : 84}
+                value={timeValue}
+                onChange={(e) => setTimeValue(Number(e.target.value) || 1)}
               />
               <Select value={timeUnit} onValueChange={(value: 'days' | 'weeks') => setTimeUnit(value)}>
                 <SelectTrigger className="w-24">
@@ -411,25 +468,25 @@ const InterviewPlanner: React.FC<InterviewPlannerProps> = ({ onPlan }) => {
               </Select>
             </div>
           </div>
-          
+
           <div className="text-sm text-muted-foreground">
             <div className="flex items-center gap-1 mb-1">
-              <Calendar className="w-4 h-4" /> 
+              <Calendar className="w-4 h-4" />
               <span className="font-medium">{totalDays}</span> days
             </div>
             <div className="flex items-center gap-1">
-              <Trophy className="w-4 h-4" /> 
+              <Trophy className="w-4 h-4" />
               <span className="font-medium">{totalWeeks}</span> weeks
             </div>
           </div>
         </div>
 
-        <Button 
-          onClick={handleCreate} 
-          disabled={busy || !primaryCompany} 
+        <Button
+          onClick={handleCreate}
+          disabled={busy || !primaryCompany}
           className="w-full h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
         >
-          <Brain className="w-4 h-4 mr-2" /> 
+          <Brain className="w-4 h-4 mr-2" />
           {busy ? 'Creating Personalized Plan…' : 'Create Company-Specific Plan'}
         </Button>
 

@@ -2,6 +2,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 interface ContentRendererProps {
   contentMarkdown?: string | null;
@@ -18,13 +19,22 @@ export const ContentRenderer: React.FC<ContentRendererProps> = ({
   if (contentMarkdown && contentMarkdown.trim()) {
     return (
       <article className={`prose prose-neutral dark:prose-invert max-w-none ${className}`}>
-        <ReactMarkdown
-          // Cast to any to avoid type issues across unified versions
-          remarkPlugins={[remarkGfm as any]}
-          rehypePlugins={[rehypeSanitize as any]}
+        <ErrorBoundary
+          fallback={
+            <div className="prose max-w-none">
+              <p className="text-muted-foreground">This content cannot be rendered as Markdown. Showing raw content below.</p>
+              <pre className="whitespace-pre-wrap break-words bg-muted/10 p-4 rounded mt-2">{contentMarkdown}</pre>
+            </div>
+          }
         >
-          {contentMarkdown}
-        </ReactMarkdown>
+          <ReactMarkdown
+            // Cast to any to avoid type issues across unified versions
+            remarkPlugins={[remarkGfm as any]}
+            rehypePlugins={[rehypeSanitize as any]}
+          >
+            {contentMarkdown}
+          </ReactMarkdown>
+        </ErrorBoundary>
       </article>
     );
   }
